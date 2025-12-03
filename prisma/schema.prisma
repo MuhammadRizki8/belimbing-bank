@@ -12,3 +12,43 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model Customer {
+  id        Int       @id @default(autoincrement())
+  name      String
+  accounts  Account[] 
+  createdAt DateTime  @default(now())
+}
+
+model DepositoType {
+  id               Int       @id @default(autoincrement())
+  name             String    // example: "Deposito Gold"
+  yearlyReturnRate Decimal   @db.Decimal(5, 2) // example: 7.00
+  accounts         Account[]
+}
+
+model Account {
+  id              Int           @id @default(autoincrement())
+  balance         Decimal       @default(0) @db.Decimal(15, 2)
+  startDate       DateTime      @default(now()) 
+  customerId      Int
+  customer        Customer      @relation(fields: [customerId], references: [id])
+  depositoTypeId  Int
+  depositoType    DepositoType  @relation(fields: [depositoTypeId], references: [id])
+  
+  transactions    Transaction[]
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model Transaction {
+  id              Int      @id @default(autoincrement())
+  amount          Decimal  @db.Decimal(15, 2)
+  type            String   // 'DEPOSIT' atau 'WITHDRAW'
+  transactionDate DateTime 
+  accountId       Int
+  account         Account  @relation(fields: [accountId], references: [id])
+  
+  createdAt       DateTime @default(now())
+}
