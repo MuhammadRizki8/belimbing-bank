@@ -10,6 +10,7 @@ const navItems = [
   { href: '/customers', label: 'Customers' },
   { href: '/accounts', label: 'Accounts' },
   { href: '/deposito-types', label: 'Deposito Types' },
+  { href: '/transactions', label: 'Transactions' },
 ];
 
 export function Sidebar() {

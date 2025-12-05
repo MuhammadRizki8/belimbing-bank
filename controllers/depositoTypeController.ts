@@ -6,8 +6,14 @@ export const getAllDepositoTypes = async () => {
   return list.map(mapDepositoType);
 };
 
-export const createDepositoType = async (data: any) => {
-  const d = await prisma.depositoType.create({ data });
+type DepositoTypeInput = {
+  name: string;
+  yearlyReturn: number | string;
+};
+
+export const createDepositoType = async (data: DepositoTypeInput) => {
+  const yearlyReturnRate = Number(data.yearlyReturn);
+  const d = await prisma.depositoType.create({ data: { name: data.name, yearlyReturnRate } });
   return mapDepositoType(d);
 };
 
@@ -16,8 +22,11 @@ export const getDepositoTypeById = async (id: number) => {
   return mapDepositoType(d);
 };
 
-export const updateDepositoType = async (id: number, data: any) => {
-  const d = await prisma.depositoType.update({ where: { id }, data });
+export const updateDepositoType = async (id: number, data: Partial<DepositoTypeInput>) => {
+  const updateData: Partial<{ name: string; yearlyReturnRate: number }> = {};
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.yearlyReturn !== undefined) updateData.yearlyReturnRate = Number(data.yearlyReturn);
+  const d = await prisma.depositoType.update({ where: { id }, data: updateData });
   return mapDepositoType(d);
 };
 

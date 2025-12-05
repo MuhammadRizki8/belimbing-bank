@@ -17,8 +17,8 @@ export const TransactionController = {
       await tx.account.update({ where: { id: accountId }, data: { balance: { increment: amount } } });
 
       // convert Decimal to number for amount
-      const t = { ...transaction, amount: (transaction as any).amount && typeof (transaction as any).amount.toNumber === 'function' ? (transaction as any).amount.toNumber() : transaction.amount };
-      return t;
+      const convertedAmount = typeof transaction.amount === 'object' && transaction.amount !== null && 'toNumber' in transaction.amount ? (transaction.amount as { toNumber(): number }).toNumber() : transaction.amount;
+      return { ...transaction, amount: convertedAmount };
     });
   },
 
@@ -79,5 +79,21 @@ export const TransactionController = {
       endingBalance,
       updatedBalance,
     };
+  },
+
+  async getAll() {
+    const transactions = await prisma.transaction.findMany({
+      include: {
+        account: {
+          include: {
+            customer: true,
+          },
+        },
+      },
+      orderBy: {
+        transactionDate: 'desc',
+      },
+    });
+    return transactions;
   },
 };

@@ -11,15 +11,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type { Resolver } from 'react-hook-form';
 import * as z from 'zod';
 import { toast } from 'sonner';
-import apiClient from '@/lib/apiClient';
-import { DepositoTypeDto as DepositoType } from '@/lib/types/customers';
+import apiClient from '@/lib/api';
+import { DepositoTypeDto as DepositoType } from '@/lib/types';
 import { useDepositoTypes } from '@/lib/hooks/useDepositoTypes';
+import DepositoTypesPageSkeleton from './_components/DepositoTypesPageSkeleton';
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
   yearlyReturn: z.coerce.number().positive('Yearly return must be a positive number.'),
 });
+
+// skeleton moved to `./_components/DepositoTypesPageSkeleton`
 
 export default function DepositoTypesPage() {
   const { depositoTypes, isLoading, isError, mutate } = useDepositoTypes();
@@ -63,8 +66,9 @@ export default function DepositoTypesPage() {
           toast.error(resp?.message || 'Failed to save deposito type');
         }
       }
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to save deposito type');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err ?? '');
+      toast.error(message || 'Failed to save deposito type');
     }
   };
 
@@ -92,8 +96,9 @@ export default function DepositoTypesPage() {
       } else {
         toast.error(resp?.message || 'Failed to delete deposito type');
       }
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to delete deposito type');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err ?? '');
+      toast.error(message || 'Failed to delete deposito type');
     }
 
     setIsDeleteConfirmOpen(false);
@@ -106,8 +111,24 @@ export default function DepositoTypesPage() {
     setIsDialogOpen(true);
   };
 
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-10">
+        <DepositoTypesPageSkeleton />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="container mx-auto py-10 text-center text-rose-500">
+        <p>Failed to load deposito types. Please try again later.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="container max-w-4xl mx-auto py-10">
+    <div className="container  mx-auto py-10">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Deposito Types</h1>
         <Button onClick={openNewDepositoTypeDialog}>Add Deposito Type</Button>

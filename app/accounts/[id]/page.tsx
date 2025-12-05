@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { apiFetcher } from '@/lib/api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { AccountDto as Account } from '@/lib/types/customers';
+import { AccountDto as Account } from '@/lib/types';
 
 const formSchema = z.object({
   amount: z.coerce.number().positive('Amount must be a positive number.'),
@@ -27,6 +27,8 @@ const formSchema = z.object({
 });
 
 type TransactionType = 'DEPOSIT' | 'WITHDRAW';
+
+import AccountDetailsPageSkeleton from './_components/AccountDetailsPageSkeleton';
 
 export default function AccountDetailsPage() {
   const params = useParams();
@@ -111,11 +113,11 @@ export default function AccountDetailsPage() {
   };
 
   if (!account) {
-    return <div>Loading...</div>;
+    return <AccountDetailsPageSkeleton />;
   }
 
   return (
-    <div className="container max-w-4xl mx-auto py-10">
+    <div className="container mx-auto py-10">
       <Card>
         <CardHeader>
           <CardTitle>Account Details</CardTitle>
@@ -126,9 +128,9 @@ export default function AccountDetailsPage() {
             <div>
               <strong>Customer:</strong> {account.customer?.name ?? '—'}
             </div>
-            <div>
+            {/* <div>
               <strong>Account ID:</strong> {account.id}
-            </div>
+            </div> */}
             <div>
               <strong>Balance:</strong> ${Number(account.balance).toFixed(2)}
             </div>

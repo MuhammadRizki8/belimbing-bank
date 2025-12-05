@@ -13,11 +13,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { AccountDto as Account } from '@/lib/types/customers';
+import { AccountDto as Account, Customer as Customer } from '@/lib/types';
 import { useAccounts } from '@/lib/hooks/useAccounts';
 import { useCustomers } from '@/lib/hooks/useCustomers';
 import { useDepositoTypes } from '@/lib/hooks/useDepositoTypes';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
+import AccountPageSkeleton from './_components/AccountPageSkeleton';
 
 const formSchema = z.object({
   customerId: z.string().min(1, 'Customer is required.'),
@@ -25,8 +27,12 @@ const formSchema = z.object({
   balance: z.coerce.number().positive('Balance must be a positive number.'),
 });
 
+// skeleton moved to `./_components/AccountPageSkeleton`
+
 export default function AccountsPage() {
-  const { accounts, isLoading, isError, mutate } = useAccounts();
+  const [page, setPage] = useState(1);
+  const pageSize = 8;
+  const { accounts, meta, isLoading, isError, mutate } = useAccounts(page, pageSize);
   const { customers } = useCustomers();
   const { depositoTypes } = useDepositoTypes();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -105,11 +111,17 @@ export default function AccountsPage() {
     setIsDialogOpen(true);
   };
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-10">
+        <AccountPageSkeleton />
+      </div>
+    );
+  }
   if (isError) return <div>Failed to load accounts.</div>;
 
   return (
-    <div className="container max-w-4xl mx-auto py-10">
+    <div className="container  mx-auto py-10">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Accounts</h1>
         <Button onClick={openNewAccountDialog}>Add Account</Button>
@@ -144,7 +156,7 @@ export default function AccountsPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {customers?.map((customer) => (
+                        {customers?.map((customer: Customer) => (
                           <SelectItem key={customer.id} value={String(customer.id)}>
                             {customer.name}
                           </SelectItem>
@@ -254,6 +266,26 @@ export default function AccountsPage() {
           )}
         </TableBody>
       </Table>
+
+      <div className="mt-4">
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious href="#" onClick={() => setPage(Math.max(1, page - 1))} />
+            </PaginationItem>
+            {[...Array(meta?.totalPages || 1)].map((_, i) => (
+              <PaginationItem key={i}>
+                <PaginationLink href="#" isActive={page === i + 1} onClick={() => setPage(i + 1)}>
+                  {i + 1}
+                </PaginationLink>
+              </PaginationItem>
+            ))}
+            <PaginationItem>
+              <PaginationNext href="#" onClick={() => setPage(Math.min(meta?.totalPages || 1, page + 1))} />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
     </div>
   );
 }

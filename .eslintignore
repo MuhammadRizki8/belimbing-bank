@@ -1,0 +1,11 @@
+app/generated/**
+app/generated/
+**/index-browser.*
+**/runtime/**
+node_modules/
+dist/
+build/
+.next/
+public/app/generated/
+**/index-browser.*
+**/runtime/**

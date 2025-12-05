@@ -1,55 +1,76 @@
-import { CustomerDto, AccountDto, TransactionDto, DepositoTypeDto } from '@/lib/types/customers';
+import type { AccountDto } from '@/lib/types/account';
+import type { DepositoTypeDto } from '@/lib/types/depositoType';
+import type { TransactionDto } from '@/lib/types/transaction';
+import type { CustomerDto } from '@/lib/types/customer';
 
-function decimalToNumber(value: any): number {
+type AnyObj = Record<string, unknown>;
+interface DecimalLike {
+  toNumber(): number;
+}
+
+function decimalToNumber(value: unknown): number {
   if (value == null) return 0;
   if (typeof value === 'number') return value;
-  if (typeof value === 'object' && typeof value.toNumber === 'function') return value.toNumber();
-  return Number(value);
+  if (typeof value === 'object' && value !== null) {
+    const obj = value as AnyObj;
+    if ('toNumber' in obj && typeof (obj as unknown as DecimalLike).toNumber === 'function') {
+      return (obj as unknown as DecimalLike).toNumber();
+    }
+  }
+  const n = Number(value as unknown as number);
+  return Number.isNaN(n) ? 0 : n;
 }
 
-export function mapTransaction(t: any): TransactionDto {
+export function mapTransaction(t: unknown): TransactionDto {
+  const obj = t as AnyObj;
   return {
-    id: Number(t.id),
-    amount: decimalToNumber(t.amount),
-    type: t.type,
-    transactionDate: t.transactionDate instanceof Date ? t.transactionDate.toISOString() : String(t.transactionDate),
-    accountId: Number(t.accountId),
+    id: Number(obj.id),
+    amount: decimalToNumber(obj.amount),
+    type: obj.type === 'DEPOSIT' || obj.type === 'WITHDRAW' ? (obj.type as 'DEPOSIT' | 'WITHDRAW') : 'DEPOSIT',
+    transactionDate: obj.transactionDate instanceof Date ? obj.transactionDate.toISOString() : String(obj.transactionDate),
+    accountId: Number(obj.accountId),
+    account: obj.account ? mapAccount(obj.account) : undefined,
   };
 }
 
-export function mapDepositoType(d: any): DepositoTypeDto {
+export function mapDepositoType(d: unknown): DepositoTypeDto {
+  const obj = d as AnyObj;
   return {
-    id: Number(d.id),
-    name: d.name,
-    yearlyReturn: decimalToNumber(d.yearlyReturnRate ?? d.yearlyReturn),
+    id: Number(obj.id),
+    name: String(obj.name),
+    yearlyReturn: decimalToNumber(obj.yearlyReturnRate ?? obj.yearlyReturn),
   };
 }
 
-export function mapAccount(a: any): AccountDto {
+export function mapAccount(a: unknown): AccountDto {
+  const obj = a as AnyObj;
   return {
-    id: Number(a.id),
-    balance: decimalToNumber(a.balance),
-    startDate: a.startDate ? (a.startDate instanceof Date ? a.startDate.toISOString() : String(a.startDate)) : undefined,
-    customerId: a.customerId != null ? Number(a.customerId) : undefined,
-    depositoTypeId: a.depositoTypeId != null ? Number(a.depositoTypeId) : undefined,
-    depositoType: a.depositoType ? mapDepositoType(a.depositoType) : undefined,
-    transactions: Array.isArray(a.transactions) ? a.transactions.map(mapTransaction) : [],
+    id: Number(obj.id),
+    balance: decimalToNumber(obj.balance),
+    startDate: obj.startDate ? (obj.startDate instanceof Date ? obj.startDate.toISOString() : String(obj.startDate)) : undefined,
+    customerId: obj.customerId != null ? Number(obj.customerId) : undefined,
+    depositoTypeId: obj.depositoTypeId != null ? Number(obj.depositoTypeId) : undefined,
+    depositoType: obj.depositoType ? mapDepositoType(obj.depositoType) : undefined,
+    transactions: Array.isArray(obj.transactions) ? obj.transactions.map(mapTransaction) : [],
   };
 }
 
-export function mapCustomer(c: any): CustomerDto {
+export function mapCustomer(c: unknown): CustomerDto {
+  const obj = c as AnyObj;
   return {
-    id: Number(c.id),
-    name: c.name,
-    accounts: Array.isArray(c.accounts) ? c.accounts.map(mapAccount) : [],
-    createdAt: c.createdAt ? (c.createdAt instanceof Date ? c.createdAt.toISOString() : String(c.createdAt)) : undefined,
+    id: Number(obj.id),
+    name: String(obj.name),
+    accounts: Array.isArray(obj.accounts) ? obj.accounts.map(mapAccount) : [],
+    createdAt: obj.createdAt ? (obj.createdAt instanceof Date ? obj.createdAt.toISOString() : String(obj.createdAt)) : undefined,
   };
 }
 
-export default {
+const normalizers = {
   decimalToNumber,
   mapTransaction,
   mapDepositoType,
   mapAccount,
   mapCustomer,
 };
+
+export default normalizers;

@@ -6,37 +6,31 @@ interface CustomerUpdateData {
 }
 
 export const CustomerController = {
-  // Get all customers with server-side search and pagination
-  async getAll(search?: string, page: number = 1, pageSize: number = 8) {
-    const whereClause = search
-      ? {
-          name: {
-            contains: search,
-            mode: 'insensitive' as const,
-          },
-        }
-      : {};
+  // Get all customers
+  async getAll(page = 1, pageSize = 10) {
+    const skip = (page - 1) * pageSize;
+    const take = pageSize;
 
-    const total = await prisma.customer.count({ where: whereClause });
-    const totalPages = Math.ceil(total / pageSize);
-
-    const list = await prisma.customer.findMany({
-      where: whereClause,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        accounts: {
-          include: {
-            depositoType: true,
-            transactions: { orderBy: { transactionDate: 'desc' } },
+    const [list, total] = await Promise.all([
+      prisma.customer.findMany({
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          accounts: {
+            include: {
+              depositoType: true,
+              transactions: { orderBy: { transactionDate: 'desc' } },
+            },
           },
         },
-      },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    });
+      }),
+      prisma.customer.count(),
+    ]);
 
     // normalize and map to DTO using shared normalizer
     const data = list.map((c) => mapCustomer(c));
+    const totalPages = Math.ceil(total / pageSize);
 
     return {
       data,

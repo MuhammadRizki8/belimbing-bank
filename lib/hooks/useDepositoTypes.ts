@@ -1,5 +1,5 @@
 import useSWR from 'swr';
-import { DepositoTypeDto } from '@/lib/types/customers';
+import { DepositoTypeDto } from '@/lib/types';
 import { apiFetcher } from '@/lib/api';
 
 export function useDepositoTypes() {

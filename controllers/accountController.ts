@@ -6,24 +6,41 @@ interface AccountUpdateData {
   balance?: number;
 }
 
-function decimalToNumber(value: any) {
-  return value && typeof value === 'object' && typeof value.toNumber === 'function' ? value.toNumber() : value;
+type AnyObj = Record<string, unknown>;
+
+interface DecimalLike {
+  toNumber(): number;
 }
 
-function normalizeAccount(a: any) {
-  if (!a) return a;
+function decimalToNumber(value: unknown) {
+  if (value == null) return 0;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'object' && value !== null) {
+    const obj = value as AnyObj;
+    if ('toNumber' in obj && typeof (obj as unknown as DecimalLike).toNumber === 'function') {
+      return (obj as unknown as DecimalLike).toNumber();
+    }
+  }
+  const n = Number(value as unknown as number);
+  return Number.isNaN(n) ? 0 : n;
+}
+
+function normalizeAccount(a: unknown) {
+  const obj = a as AnyObj | null | undefined;
+  if (!obj) return obj;
   return {
-    ...a,
-    balance: decimalToNumber(a.balance),
-    depositoType: a.depositoType
+    ...obj,
+    balance: decimalToNumber(obj.balance),
+    depositoType: obj.depositoType
       ? (() => {
-          const yr = decimalToNumber(a.depositoType.yearlyReturnRate);
-          const copy = { ...a.depositoType, yearlyReturn: yr };
-          delete (copy as any).yearlyReturnRate;
+          const dt = obj.depositoType as AnyObj;
+          const yr = decimalToNumber(dt.yearlyReturnRate ?? dt.yearlyReturn);
+          const copy: AnyObj = { ...dt, yearlyReturn: yr };
+          delete copy.yearlyReturnRate;
           return copy;
         })()
-      : a.depositoType,
-    transactions: Array.isArray(a.transactions) ? a.transactions.map((t: any) => ({ ...t, amount: decimalToNumber(t.amount) })) : a.transactions,
+      : obj.depositoType,
+    transactions: Array.isArray(obj.transactions) ? obj.transactions.map((t: unknown) => ({ ...(t as AnyObj), amount: decimalToNumber((t as AnyObj).amount) })) : obj.transactions,
   };
 }
 
@@ -57,9 +74,32 @@ export const AccountController = {
     return normalizeAccount(acc);
   },
 
-  async getAll() {
-    const list = await prisma.account.findMany({ include: { customer: true, depositoType: true } });
-    return list.map(normalizeAccount);
+  async getAll(page = 1, pageSize = 10) {
+    const skip = (page - 1) * pageSize;
+    const take = pageSize;
+
+    const [list, total] = await Promise.all([
+      prisma.account.findMany({
+        skip,
+        take,
+        orderBy: { startDate: 'desc' },
+        include: { customer: true, depositoType: true },
+      }),
+      prisma.account.count(),
+    ]);
+
+    const data = list.map(normalizeAccount);
+    const totalPages = Math.ceil(total / pageSize);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        pageSize,
+        totalPages,
+      },
+    };
   },
 
   async update(id: number, data: AccountUpdateData) {
