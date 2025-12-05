@@ -32,7 +32,7 @@ model Account {
   balance         Decimal       @default(0) @db.Decimal(15, 2)
   startDate       DateTime      @default(now()) 
   customerId      Int
-  customer        Customer      @relation(fields: [customerId], references: [id])
+  customer        Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
   depositoTypeId  Int
   depositoType    DepositoType  @relation(fields: [depositoTypeId], references: [id])
   
@@ -48,7 +48,7 @@ model Transaction {
   type            String   // 'DEPOSIT' atau 'WITHDRAW'
   transactionDate DateTime 
   accountId       Int
-  account         Account  @relation(fields: [accountId], references: [id])
+  account         Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
   
   createdAt       DateTime @default(now())
 }

@@ -2,28 +2,40 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-const routes = [
-  { href: '/', label: 'Home' },
+const navItems = [
+  { href: '/', label: 'Dashboard' },
   { href: '/customers', label: 'Customers' },
   { href: '/accounts', label: 'Accounts' },
   { href: '/deposito-types', label: 'Deposito Types' },
-  { href: '/transactions', label: 'Transactions' },
 ];
 
-export default function Sidebar() {
+export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 min-h-screen bg-gray-100 p-4">
-      <nav className="flex flex-col space-y-2">
-        {routes.map((route) => (
-          <Link key={route.href} href={route.href} className={cn('px-4 py-2 rounded-md text-sm font-medium', pathname === route.href ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-200')}>
-            {route.label}
-          </Link>
-        ))}
-      </nav>
+    <aside className="w-64 flex-shrink-0 border-r bg-background">
+      <div className="flex h-full flex-col">
+        <div className="p-4">
+          <h2 className="text-2xl font-bold tracking-tight">Belimbing Bank</h2>
+        </div>
+        <nav className="flex flex-col gap-1 p-4">
+          {navItems.map((item) => (
+            <Button
+              key={item.href}
+              asChild
+              variant={pathname === item.href ? 'secondary' : 'ghost'}
+              className={cn('justify-start', {
+                'bg-primary/10 text-primary': pathname === item.href,
+              })}
+            >
+              <Link href={item.href}>{item.label}</Link>
+            </Button>
+          ))}
+        </nav>
+      </div>
     </aside>
   );
 }

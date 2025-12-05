@@ -3,9 +3,14 @@ import { CustomerController } from '@/controllers/customerController';
 
 type CustomerCreateBody = { name: string };
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const data = await CustomerController.getAll();
+    const { searchParams } = new URL(request.url);
+    const search = searchParams.get('search') || undefined;
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const pageSize = parseInt(searchParams.get('pageSize') || '8', 10);
+
+    const data = await CustomerController.getAll(search, page, pageSize);
     return successResponse(data);
   } catch (error: unknown) {
     return errorResponse(getErrorMessage(error));

@@ -1,12 +1,52 @@
 import prisma from '@/lib/prisma';
+import { mapCustomer } from './_normalizers';
+
+interface CustomerUpdateData {
+  name?: string;
+}
 
 export const CustomerController = {
-  // Get all customers with their accounts
-  async getAll() {
-    return await prisma.customer.findMany({
+  // Get all customers with server-side search and pagination
+  async getAll(search?: string, page: number = 1, pageSize: number = 8) {
+    const whereClause = search
+      ? {
+          name: {
+            contains: search,
+            mode: 'insensitive' as const,
+          },
+        }
+      : {};
+
+    const total = await prisma.customer.count({ where: whereClause });
+    const totalPages = Math.ceil(total / pageSize);
+
+    const list = await prisma.customer.findMany({
+      where: whereClause,
       orderBy: { createdAt: 'desc' },
-      include: { accounts: true },
+      include: {
+        accounts: {
+          include: {
+            depositoType: true,
+            transactions: { orderBy: { transactionDate: 'desc' } },
+          },
+        },
+      },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     });
+
+    // normalize and map to DTO using shared normalizer
+    const data = list.map((c) => mapCustomer(c));
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        pageSize,
+        totalPages,
+      },
+    };
   },
 
   // Create a customer
@@ -23,16 +63,18 @@ export const CustomerController = {
     });
   },
 
-  // Delete customer (delete related transactions and accounts first)
+  // Update customer
+  async update(id: number, data: CustomerUpdateData) {
+    return await prisma.customer.update({
+      where: { id },
+      data,
+    });
+  },
+
+  // Delete customer (cascading delete is handled by the database)
   async delete(id: number) {
-    const accounts = await prisma.account.findMany({ where: { customerId: id }, select: { id: true } });
-    const accountIds = accounts.map((a) => a.id);
-
-    if (accountIds.length > 0) {
-      await prisma.transaction.deleteMany({ where: { accountId: { in: accountIds } } });
-      await prisma.account.deleteMany({ where: { id: { in: accountIds } } });
-    }
-
-    return await prisma.customer.delete({ where: { id } });
+    return await prisma.customer.delete({
+      where: { id },
+    });
   },
 };

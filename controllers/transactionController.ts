@@ -16,56 +16,68 @@ export const TransactionController = {
 
       await tx.account.update({ where: { id: accountId }, data: { balance: { increment: amount } } });
 
-      return transaction;
+      // convert Decimal to number for amount
+      const t = { ...transaction, amount: (transaction as any).amount && typeof (transaction as any).amount.toNumber === 'function' ? (transaction as any).amount.toNumber() : transaction.amount };
+      return t;
     });
   },
 
   async withdraw(accountId: number, amount: number, date: string) {
     const withdrawDate = new Date(date);
 
-    const account = await prisma.account.findUnique({ where: { id: accountId }, include: { depositoType: true } });
+    const account = await prisma.account.findUnique({
+      where: { id: accountId },
+      include: { depositoType: true, transactions: true },
+    });
     if (!account) throw new Error('Account not found');
 
-    const currentBalance = Number(account.balance);
-    const yearlyRate = Number(account.depositoType.yearlyReturnRate);
-
-    const start = new Date(account.startDate);
-    const monthsDiff = (withdrawDate.getFullYear() - start.getFullYear()) * 12 + (withdrawDate.getMonth() - start.getMonth());
-
-    const monthlyReturnRate = yearlyRate / 100 / 12;
-
-    const interestEarned = currentBalance * Math.max(0, monthsDiff) * monthlyReturnRate;
-    const totalBalanceAvailable = currentBalance + interestEarned;
-
-    if (amount > totalBalanceAvailable) {
-      throw new Error(`Insufficient funds. Available (incl. interest): ${totalBalanceAvailable.toFixed(2)}`);
+    if (account.balance.toNumber() < amount) {
+      throw new Error('Insufficient funds');
     }
 
-    return await prisma.$transaction(async (tx) => {
-      if (interestEarned > 0) {
-        await tx.transaction.create({
-          data: {
-            accountId,
-            amount: interestEarned,
-            type: 'INTEREST',
-            transactionDate: withdrawDate,
-          },
-        });
-      }
+    // Correct Interest Calculation:
+    // Calculate interest based on the initial deposit and time held.
+    // This is a simplified example. A real-world scenario would be more complex.
+    const deposit = account.transactions.find((t) => t.type === 'DEPOSIT' && t.amount.toNumber() > 0);
+    const startingBalance = deposit ? deposit.amount.toNumber() : 0;
+    const depositDate = deposit ? new Date(deposit.transactionDate) : new Date();
 
-      const trx = await tx.transaction.create({
-        data: {
-          accountId,
-          amount,
-          type: 'WITHDRAW',
-          transactionDate: withdrawDate,
-        },
-      });
+    const diffTime = Math.abs(withdrawDate.getTime() - depositDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const monthsHeld = diffDays / 30; // Approximation
 
-      const newBalance = totalBalanceAvailable - amount;
-      await tx.account.update({ where: { id: accountId }, data: { balance: newBalance } });
+    const yearlyReturn = account.depositoType.yearlyReturnRate.toNumber();
+    const monthlyReturn = yearlyReturn / 12 / 100;
 
-      return { transaction: trx, interestEarned, totalBalanceBeforeWithdraw: totalBalanceAvailable };
+    // Simple interest calculation on the principal amount
+    const interestEarned = startingBalance * monthsHeld * monthlyReturn;
+    const endingBalance = account.balance.toNumber() + interestEarned;
+
+    if (endingBalance < amount) {
+      throw new Error(`Insufficient funds after interest calculation. You only have ${endingBalance.toFixed(2)}`);
+    }
+
+    const updatedBalance = endingBalance - amount;
+
+    await prisma.transaction.create({
+      data: {
+        accountId,
+        amount: -amount,
+        type: 'WITHDRAW',
+        transactionDate: withdrawDate,
+      },
     });
+
+    await prisma.account.update({
+      where: { id: accountId },
+      data: { balance: updatedBalance },
+    });
+
+    return {
+      message: 'Withdrawal successful!',
+      interestEarned,
+      endingBalance,
+      updatedBalance,
+    };
   },
 };
